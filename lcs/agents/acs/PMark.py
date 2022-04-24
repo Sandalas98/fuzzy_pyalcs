@@ -48,6 +48,8 @@ class PMark(TypedList):
 
         for idx, item in enumerate(condition):
             if item == self.cfg.classifier_wildcard:
+                #print(self)
+                #print(perception)
                 self[idx].add(perception[idx])
                 changed = True
 

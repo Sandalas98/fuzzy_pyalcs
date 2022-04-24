@@ -5,7 +5,8 @@ class Mazev2FuzzyEnvironmentAdapter(FuzzyEnvironmentAdapter):
     _path = 0
     _wall = 1
     _reward = 9
-    condition_length = 12
+    condition_length = 12 # Ilość pól razy liczba funkcji
+    _agregation_methods = ['sum_to_two', 'sum_to_three']
 
     def __init__(self, env):
         super().__init__(env)
@@ -14,8 +15,11 @@ class Mazev2FuzzyEnvironmentAdapter(FuzzyEnvironmentAdapter):
             self._generate_triangular_function,
             self._generate_right_linear_function
         ]
-        self._ranges = [
+        self._ranges_2 = [
             (0, 1.5), (0.5, 2.0, 2.5), (9.0, 10.0)
+        ]
+        self._ranges_3 = [
+            (0, 2.5), (0.5, 3.0, 8.0), (9.0, 11.0)
         ]
 
         self._action_ranges = [
@@ -31,14 +35,32 @@ class Mazev2FuzzyEnvironmentAdapter(FuzzyEnvironmentAdapter):
             state.append(str(p))
         return tuple(state)
 
-    def to_membership_function(self, obs):
+    def to_membership_function(self, obs, aggregation_method, fuzzy_function):
         obs = list(map(float, obs))
-        memberships_values = [[] for _ in range(4)]
-        for idx, _ in enumerate(obs[::2]):
-            o = obs[idx * 2] + obs[idx * 2 + 1]
-            for func, rang in zip(self._functions, self._ranges):
-                memberships_values[idx].append(func(o, rang))
-        return tuple(memberships_values)
+
+        #if agregation_method is None:
+        #agregation_method='sum_to_three'
+
+        #assert agregation_method not in self._agregation_methods
+
+
+        if aggregation_method == 'sum_to_two':
+            memberships_values = [[] for _ in range(4)]
+            for idx, _ in enumerate(obs[::2]):
+                o = obs[idx * 2] + obs[idx * 2 + 1]
+                for func, rang in zip(self._functions, self._ranges_2):
+                    memberships_values[idx].append(func(o, rang, fuzzy_function))
+            return tuple(memberships_values)
+        
+        # If we want to grup by three:
+        elif aggregation_method == 'sum_to_three':
+            memberships_values = [[] for _ in range(8)]
+            for idx, _ in enumerate(obs[::3]):
+                o = obs[idx * 3 - 1] + obs[idx * 3] + obs[idx * 3 + 1]
+                #o = obs[idx * 3] + obs[idx * 3 + 1]
+                for func, rang in zip(self._functions, self._ranges_3):
+                    memberships_values[idx].append(func(o, rang, fuzzy_function))
+            return tuple(memberships_values)
 
     def calculate_final_actions_func_shape(self, values):
         final_ranges = []

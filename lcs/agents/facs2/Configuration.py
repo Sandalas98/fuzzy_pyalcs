@@ -1,3 +1,4 @@
+import string
 import lcs.agents.acs as acs
 
 
@@ -14,6 +15,8 @@ class Configuration(acs.Configuration):
         self.theta_ga: int = kwargs.get('theta_ga', 100)
         self.mu: float = kwargs.get('mu', 0.3)
         self.chi: float = kwargs.get('chi', 0.8)
+        self.aggregation_method: string = kwargs.get('aggregation_method', 'sum_to_two')
+        self.fuzzy_function: string = kwargs.get('fuzzy_function', 'linear')
 
     def __str__(self) -> str:
         return str(vars(self))

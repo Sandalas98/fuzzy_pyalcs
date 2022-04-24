@@ -14,6 +14,7 @@ class fACS2(Agent):
                  cfg: Configuration,
                  population: ClassifiersList = None) -> None:
         self.cfg = cfg
+        print(cfg.fuzzy_function)
         self.population = population or ClassifiersList()
 
     def get_population(self):
@@ -36,8 +37,8 @@ class fACS2(Agent):
 
         while not done:
             state = Perception(state)
-            state_to_calculate = Perception(env.change_state_type(state))
-            membership_func_values = env.to_membership_function(state)
+            state_to_calculate = Perception(env.change_state_type(state, self.cfg.aggregation_method, self.cfg.fuzzy_function))
+            membership_func_values = env.to_membership_function(state, self.cfg.aggregation_method, self.cfg.fuzzy_function)
             match_set = self.population.form_match_set(membership_func_values)
 
             if steps > 0:
@@ -84,7 +85,7 @@ class fACS2(Agent):
             raw_state, last_reward, done, _ = env.step(action)
 
             state = Perception(raw_state)
-            state_to_calculate = Perception(env.change_state_type(state))
+            state_to_calculate = Perception(env.change_state_type(state, self.cfg.aggregation_method, self.cfg.fuzzy_function))
 
             if done:
                 ClassifiersList.apply_alp(
@@ -135,9 +136,9 @@ class fACS2(Agent):
         done = False
 
         while not done:
-            env.render()
+            #env.render()
             state = Perception(state)
-            membership_func_values = env.to_membership_function(state)
+            membership_func_values = env.to_membership_function(state, self.cfg.aggregation_method, self.cfg.fuzzy_function)#, agregation_method='sum_to_three')
 
             match_set = self.population.form_match_set(membership_func_values)
 

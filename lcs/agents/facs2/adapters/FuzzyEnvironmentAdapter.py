@@ -1,19 +1,30 @@
+from glob import glob
 import gym
 import numpy as np
 
 
 class FuzzyEnvironmentAdapter(gym.ObservationWrapper):
 
+    """
+    Function types for defuzzyfication. By default is linear one.
+    """
+    _functions = [  'linear',
+                    'sigmoid',
+                    'polynominal']
+
     def __init__(self, env):
         super().__init__(env)
+        
+        
 
     def observation(self, observation):
         return observation
 
     @classmethod
-    def _generate_triangular_function(cls,
+    def _generate_triangular_function(self,
                                       x: float,
-                                      abc: [float]) -> float:
+                                      abc: [float],
+                                      function_type='linear') -> float:
         """
         Generate traingular membership function and
         calcaulate value for given variable.
@@ -30,23 +41,48 @@ class FuzzyEnvironmentAdapter(gym.ObservationWrapper):
         float
             value of given point
         """
+
+
+        assert function_type is not self._functions, f'Function name incorrect. Expected keyword: linear or sigmoid'
+    
         assert len(abc) == 3
         a, b, c = np.r_[abc]
         assert a <= b <= c
 
-        if x < a or x > c:
-            return 0.0
+        
+        if function_type == self._functions[0]:
+            if x < a or x > c:
+                return 0.0
 
-        if x > b:
-            y = (c - x) / (c - b)
-        elif x < b:
-            y = (x - a) / (b - a)
-        else:
-            y = 1.0
-
+            if x > b:
+                y = (c - x) / (c - b)
+            elif x < b:
+                y = (x - a) / (b - a)
+            else:
+                y = 1.0
+        
+        elif function_type == self._functions[1]:
+            if x < b:
+                if x <= a:
+                    y = 0.0
+                elif a < x <= (a+b)/2:
+                    y = 2*((x-b)/(b-a))**2
+                else:# (a+b)/2 < x < b:
+                    y = 1-2*((x-b)/(b-a))**2
+                '''else:
+                    y = 1.0'''
+            else:
+                '''if x <= a:
+                    y = 1.0'''
+                if b < x <= (b+c)/2:
+                    y = 1 - 2*((x-c)/(c-b))**2
+                elif (a+b)/2 < x < b:
+                    y = 2*((x-c)/(c-b))**2
+                else:
+                    y = 0.0
         return y
 
-    def change_state_type(self, raw_state):
+    def change_state_type(self, raw_state, aggregation_method, fuzzy_function):
         """
         Change 2D list of memberships value to 1D
 
@@ -60,17 +96,20 @@ class FuzzyEnvironmentAdapter(gym.ObservationWrapper):
         [float]
             1D list of memberships values
         """
+        
+
         final_state = []
-        state = self.to_membership_function(raw_state)
+        state = self.to_membership_function(raw_state, aggregation_method, fuzzy_function)
         for obs in state:
             for o in obs:
                 final_state.append(str(o))
         return final_state
 
     @classmethod
-    def _generate_left_linear_function(cls,
+    def _generate_left_linear_function(self,
                                        x: float,
-                                       ab: [float]) -> float:
+                                       ab: [float],
+                                       function_type='linear') -> float:
         """
         Generate left linear function to calculate
         membership value of given x
@@ -88,23 +127,42 @@ class FuzzyEnvironmentAdapter(gym.ObservationWrapper):
             value of given point
         """
 
+       
+        '''_functions = [  'linear',
+                    'sigmoid',
+                    'polynominal']'''
+
+        assert function_type is not self._functions, f'Function name incorrect. Expected keyword: linear or sigmoid'
+
         assert len(ab) == 2
         a, b = np.r_[ab]
         assert a <= b
 
-        if x <= a:
-            y = 1.0
-        elif a < x < b:
-            y = (b - x) / (b - a)
-        else:
-            y = 0.0
+        if function_type == self._functions[0]:
+            if x <= a:
+                y = 1.0
+            elif a < x < b:
+                y = (b - x) / (b - a)
+            else:
+                y = 0.0
+
+        elif function_type == self._functions[1]:
+            if x <= a:
+                y = 1.0
+            elif a < x <= (a+b)/2:
+                y = 1 - 2*((x-b)/(b-a))**2
+            elif (a+b)/2 < x < b:
+                y = 2*((x-b)/(b-a))**2
+            else:
+                y = 0.0
 
         return y
 
     @classmethod
-    def _generate_right_linear_function(cls,
+    def _generate_right_linear_function(self,
                                         x: float,
-                                        ab: [float]) -> float:
+                                        ab: [float],
+                                        function_type='linear') -> float:
         """
         Generate right linear function to calculate
         membership value of given x
@@ -121,16 +179,30 @@ class FuzzyEnvironmentAdapter(gym.ObservationWrapper):
         float
             value of given point
         """
+
+        assert function_type is not self._functions, f'Function name incorrect. Expected keyword: linear or sigmoid'
+
+
         assert len(ab) == 2
         a, b = np.r_[ab]
         assert a <= b
 
-        if x >= b:
-            y = 1.0
-        elif a < x < b:
-            y = (b - x) / (b - a)
-        else:
-            y = 0.0
+        if function_type == self._functions[0]:
+            if x >= b:
+                y = 1.0
+            elif a < x < b:
+                y = (b - x) / (b - a)
+            else:
+                y = 0.0
+        elif function_type == self._functions[1]:
+            if x <= a:
+                y = 0.0
+            elif a < x <= (a+b)/2:
+                y = 2*((x-b)/(b-a))**2
+            elif (a+b)/2 < x < b:
+                y = 1-2*((x-b)/(b-a))**2
+            else:
+                y = 1.0
 
         return y
 
@@ -181,7 +253,7 @@ class FuzzyEnvironmentAdapter(gym.ObservationWrapper):
         """
         raise NotImplementedError()
 
-    def to_membership_function(self, obs):
+    def to_membership_function(self, obs, aggregation_method, fuzzy_function):
         """
         Change given observation to membership values
 

@@ -7,6 +7,8 @@ class WoodsFuzzyEnvironmentAdapter(FuzzyEnvironmentAdapter):
     _reward = 9
     condition_length = 12
 
+    _agregation_methods = ['sum_to_two', 'sum_to_three']
+
     def __init__(self, env):
         super().__init__(env)
         self._functions = [
@@ -18,6 +20,13 @@ class WoodsFuzzyEnvironmentAdapter(FuzzyEnvironmentAdapter):
             (0, 1.5), (0.5, 2.0, 2.5), (9.0, 10.0)
         ]
 
+        self._ranges_2 = [
+            (0, 1.5), (0.5, 2.0, 2.5), (9.0, 10.0)
+        ]
+        self._ranges_3 = [
+            (0, 2.5), (0.5, 3.0, 8.0), (9.0, 11.0)
+        ]
+
         self._action_ranges = [
             (-0.5, 0.5), (0.5, 1.5), (1.5, 2.5),
             (2.5, 3.5), (3.5, 4.5), (4.5, 5.5),
@@ -27,6 +36,7 @@ class WoodsFuzzyEnvironmentAdapter(FuzzyEnvironmentAdapter):
     @classmethod
     def to_genotype(cls, phenotype):
         state = []
+       
         for p in phenotype:
             if p == 'O':
                 state.append('1.0')
@@ -36,14 +46,28 @@ class WoodsFuzzyEnvironmentAdapter(FuzzyEnvironmentAdapter):
                 state.append('9.0')
         return tuple(state)
 
-    def to_membership_function(self, obs):
+    def to_membership_function(self, obs, aggregation_method, fuzzy_function):
+        obs = self.to_genotype(obs)
         obs = list(map(float, obs))
-        memberships_values = [[] for _ in range(4)]
-        for idx, _ in enumerate(obs[::2]):
-            o = obs[idx * 2] + obs[idx * 2 + 1]
-            for func, rang in zip(self._functions, self._ranges):
-                memberships_values[idx].append(func(o, rang))
-        return tuple(memberships_values)
+
+
+        if aggregation_method == 'sum_to_two':
+            memberships_values = [[] for _ in range(4)]
+            for idx, _ in enumerate(obs[::2]):
+                o = obs[idx * 2] + obs[idx * 2 + 1]
+                for func, rang in zip(self._functions, self._ranges_2):
+                    memberships_values[idx].append(func(o, rang, fuzzy_function))
+            return tuple(memberships_values)
+        
+        # If we want to grup by three:
+        elif aggregation_method == 'sum_to_three':
+            memberships_values = [[] for _ in range(8)]
+            for idx, _ in enumerate(obs[::3]):
+                o = obs[idx * 3 - 1] + obs[idx * 3] + obs[idx * 3 + 1]
+                #o = obs[idx * 3] + obs[idx * 3 + 1]
+                for func, rang in zip(self._functions, self._ranges_3):
+                    memberships_values[idx].append(func(o, rang, fuzzy_function))
+            return tuple(memberships_values)
 
     def calculate_final_actions_func_shape(self, values):
         final_ranges = []
